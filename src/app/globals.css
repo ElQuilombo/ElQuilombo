@@ -133,7 +133,7 @@ body {
   inset: 0;
   z-index: -2;
   background-color: var(--bg-black);
-  background-image: url('/recursos/fondoestatico.png');
+  background-image: url('/recursos/fondoestatico.webp');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;

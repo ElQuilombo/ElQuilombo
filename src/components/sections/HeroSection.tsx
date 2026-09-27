@@ -328,7 +328,7 @@ export default function HeroSection({ onOpenReel }: HeroSectionProps) {
                   src="/assets/video/tiktok-viral-quilombo.mp4"
                   poster="/assets/img/tiktok-cover.jpg"
                   playsInline
-                  preload="metadata"
+                  preload="none"
                   className="hero-inline-video"
                   onPlay={() => {
                     setIsVideoPlaying(true);

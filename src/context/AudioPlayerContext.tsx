@@ -112,7 +112,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   // Initialize audio element
   useEffect(() => {
     const audio = new Audio();
-    audio.preload = 'auto';
+    audio.preload = 'none';
     audio.volume = volume;
     audioRef.current = audio;
 
