@@ -3450,23 +3450,44 @@ export default function OrganizadorPage() {
         )}
 
         {/* ========================================================= */}
-        {/* TAB 4: CUSTOMIZE DIGITAL TICKET                           */}
+        {/* TAB: CUSTOMIZE DIGITAL TICKET                             */}
         {/* ========================================================= */}
         {activeTab === 'ticket' && (
           <div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'var(--font-title)', fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>
-                PERSONALIZADOR DEL BOLETO DIGITAL
-              </h2>
-              <p style={{ color: 'var(--text-subtle)', fontSize: '0.82rem' }}>
-                Modificá las fechas, lugar, precios y textos del comprobante. Los cambios se sincronizan en la web de todos los usuarios.
-              </p>
+            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-title)', fontSize: '1.4rem', fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🎟️</span> PERSONALIZADOR &amp; SIMULADOR DEL BOLETO DIGITAL
+                </h2>
+                <p style={{ color: 'var(--text-subtle)', fontSize: '0.82rem', marginTop: '0.2rem' }}>
+                  Ajustá en tiempo real fechas, lugar, precios y textos del boleto. Podés previsualizar datos de ejemplo o de cualquier comprador real.
+                </p>
+              </div>
+
+              {reservations.length > 0 && (
+                <div
+                  style={{
+                    background: 'rgba(168, 85, 247, 0.12)',
+                    border: '1px solid var(--border-neon-purple)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '0.4rem 0.9rem',
+                    fontSize: '0.78rem',
+                    color: 'var(--neon-purple-light)',
+                    fontWeight: 800,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  <span>👥</span> {reservations.length} asistentes registrados para previsualizar
+                </div>
+              )}
             </div>
 
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
                 gap: '2rem',
                 alignItems: 'start',
               }}
@@ -3475,83 +3496,99 @@ export default function OrganizadorPage() {
               <form
                 onSubmit={handleSaveSettings}
                 style={{
-                  background: 'rgba(15, 12, 28, 0.85)',
+                  background: 'rgba(15, 12, 28, 0.88)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '20px',
+                  borderRadius: '24px',
                   padding: '1.75rem',
+                  boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
                 }}
               >
-                <div style={{ display: 'grid', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <span style={{ fontSize: '1.1rem' }}>⚙️</span>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: '#fff' }}>
+                    Parámetros Oficiales del Evento
+                  </h3>
+                </div>
+
+                <div style={{ display: 'grid', gap: '1.2rem' }}>
+                  {/* Fecha y Hora */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                      Fecha y Hora del Evento
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                      🗓️ Fecha y Hora del Evento
                     </label>
                     <input
                       type="text"
                       id="input-event-date"
                       value={settings.eventDate}
                       onChange={(e) => setSettings({ ...settings, eventDate: e.target.value })}
+                      placeholder="Ej: 09 OCT • 8:00 PM"
                       style={{
                         width: '100%',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.7rem',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
                         color: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         outline: 'none',
+                        transition: 'border-color 0.2s',
                       }}
                     />
                   </div>
 
+                  {/* Lugar */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                      Lugar del Evento (Venue)
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                      📍 Lugar del Evento (Venue)
                     </label>
                     <input
                       type="text"
                       id="input-venue-name"
                       value={settings.venueName}
                       onChange={(e) => setSettings({ ...settings, venueName: e.target.value })}
+                      placeholder="Ej: Rock & Riff"
                       style={{
                         width: '100%',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.7rem',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
                         color: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         outline: 'none',
                       }}
                     />
                   </div>
 
+                  {/* Dirección Completa */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                      Dirección Completa
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                      🗺️ Dirección Completa del Local
                     </label>
                     <input
                       type="text"
                       id="input-venue-address"
                       value={settings.venueAddress}
                       onChange={(e) => setSettings({ ...settings, venueAddress: e.target.value })}
+                      placeholder="Ej: Rock & Riff (antiguo Oleo Gastrobar) - Urb. La Viña, Valencia"
                       style={{
                         width: '100%',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.7rem',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
                         color: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         outline: 'none',
                       }}
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  {/* Precios General & VIP */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                        Precio General ($ USD)
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                        🎟️ Precio General ($ USD)
                       </label>
                       <input
                         type="number"
@@ -3563,17 +3600,17 @@ export default function OrganizadorPage() {
                           width: '100%',
                           background: 'rgba(255, 255, 255, 0.05)',
                           border: '1px solid rgba(255, 255, 255, 0.15)',
-                          borderRadius: '8px',
-                          padding: '0.7rem',
+                          borderRadius: '10px',
+                          padding: '0.65rem 0.85rem',
                           color: '#fff',
-                          fontSize: '0.9rem',
+                          fontSize: '0.88rem',
                           outline: 'none',
                         }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                        Precio VIP ($ USD)
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                        ⭐ Precio VIP ($ USD)
                       </label>
                       <input
                         type="number"
@@ -3585,19 +3622,20 @@ export default function OrganizadorPage() {
                           width: '100%',
                           background: 'rgba(255, 255, 255, 0.05)',
                           border: '1px solid rgba(255, 255, 255, 0.15)',
-                          borderRadius: '8px',
-                          padding: '0.7rem',
+                          borderRadius: '10px',
+                          padding: '0.65rem 0.85rem',
                           color: '#fff',
-                          fontSize: '0.9rem',
+                          fontSize: '0.88rem',
                           outline: 'none',
                         }}
                       />
                     </div>
                   </div>
 
+                  {/* WhatsApp Oficial de Pagos */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                      WhatsApp Oficial de Pagos
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                      📱 WhatsApp Oficial de Pagos y Atención
                     </label>
                     <input
                       type="text"
@@ -3609,32 +3647,82 @@ export default function OrganizadorPage() {
                         width: '100%',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.7rem',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
                         color: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         outline: 'none',
                       }}
                     />
                   </div>
 
+                  {/* Subtítulo del Boleto & Aforo */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '0.85rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                        🎭 Subtítulo / Edición del Evento
+                      </label>
+                      <input
+                        type="text"
+                        id="input-ticket-subtitle"
+                        value={settings.ticketSubtitle || ''}
+                        onChange={(e) => setSettings({ ...settings, ticketSubtitle: e.target.value })}
+                        placeholder="Ej: ARGENTO PARTY"
+                        style={{
+                          width: '100%',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '10px',
+                          padding: '0.65rem 0.85rem',
+                          color: '#fff',
+                          fontSize: '0.88rem',
+                          outline: 'none',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                        👥 Aforo Máximo
+                      </label>
+                      <input
+                        type="number"
+                        id="input-max-capacity"
+                        min="10"
+                        value={settings.maxCapacity || 350}
+                        onChange={(e) => setSettings({ ...settings, maxCapacity: Number(e.target.value) })}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '10px',
+                          padding: '0.65rem 0.85rem',
+                          color: '#fff',
+                          fontSize: '0.88rem',
+                          outline: 'none',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Instrucciones de Puerta */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: '0.4rem' }}>
-                      Instrucciones de Puerta en el Boleto
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.4rem' }}>
+                      🚪 Instrucciones de Puerta en el Boleto
                     </label>
                     <textarea
                       id="input-door-instructions"
                       rows={2}
                       value={settings.ticketDoorInstructions}
                       onChange={(e) => setSettings({ ...settings, ticketDoorInstructions: e.target.value })}
+                      placeholder="Ej: Mostrá este código por WhatsApp o en la entrada de Rock & Riff"
                       style={{
                         width: '100%',
                         background: 'rgba(255, 255, 255, 0.05)',
                         border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '8px',
-                        padding: '0.7rem',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
                         color: '#fff',
-                        fontSize: '0.85rem',
+                        fontSize: '0.84rem',
                         outline: 'none',
                         resize: 'none',
                       }}
@@ -3644,13 +3732,14 @@ export default function OrganizadorPage() {
                   {settingsSaveNotice && (
                     <div
                       style={{
-                        padding: '0.65rem 1rem',
-                        borderRadius: '8px',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '10px',
                         fontSize: '0.82rem',
                         fontWeight: 700,
                         background: settingsSaveNotice.includes('Error')
                           ? 'rgba(255, 0, 127, 0.15)'
                           : 'rgba(0, 240, 255, 0.15)',
+                        border: `1px solid ${settingsSaveNotice.includes('Error') ? '#ff007f' : 'var(--neon-cyan)'}`,
                         color: settingsSaveNotice.includes('Error') ? '#ff007f' : 'var(--neon-cyan)',
                       }}
                     >
@@ -3671,7 +3760,9 @@ export default function OrganizadorPage() {
                       fontSize: '0.95rem',
                       padding: '0.85rem',
                       borderRadius: 'var(--radius-pill)',
-                      cursor: 'pointer',
+                      cursor: isSavingSettings ? 'wait' : 'pointer',
+                      boxShadow: '0 4px 18px rgba(168, 85, 247, 0.4)',
+                      transition: 'all 0.2s ease',
                     }}
                   >
                     {isSavingSettings ? 'Guardando en Supabase...' : '💾 Guardar Cambios en Vivo'}
@@ -3681,7 +3772,11 @@ export default function OrganizadorPage() {
 
               {/* Live Preview */}
               <div>
-                <AdminTicketPreview settings={settings} />
+                <AdminTicketPreview
+                  settings={settings}
+                  reservations={reservations}
+                  onOpenTicketGenerator={(res) => handleOpenTicketGenerator(res)}
+                />
               </div>
             </div>
           </div>
