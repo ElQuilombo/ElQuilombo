@@ -1113,60 +1113,62 @@ export default function OrganizadorPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="organizer-tabs-bar">
-          <button
-            type="button"
-            id="tab-btn-metrics"
-            onClick={() => setActiveTab('metrics')}
-            className={`organizer-tab-btn ${activeTab === 'metrics' ? 'active' : ''}`}
-          >
-            <span>📊</span> Métricas
-          </button>
+        <div className="organizer-tabs-container">
+          <div className="organizer-tabs-bar">
+            <button
+              type="button"
+              id="tab-btn-metrics"
+              onClick={() => setActiveTab('metrics')}
+              className={`organizer-tab-btn ${activeTab === 'metrics' ? 'active' : ''}`}
+            >
+              <span>📊</span> Métricas
+            </button>
 
-          <button
-            type="button"
-            id="tab-btn-attendees"
-            onClick={() => setActiveTab('attendees')}
-            className={`organizer-tab-btn ${activeTab === 'attendees' ? 'active' : ''}`}
-          >
-            <span>👥</span> Asistentes ({reservations.length})
-          </button>
+            <button
+              type="button"
+              id="tab-btn-attendees"
+              onClick={() => setActiveTab('attendees')}
+              className={`organizer-tab-btn ${activeTab === 'attendees' ? 'active' : ''}`}
+            >
+              <span>👥</span> Asistentes ({reservations.length})
+            </button>
 
-          <button
-            type="button"
-            id="tab-btn-sources"
-            onClick={() => setActiveTab('sources')}
-            className={`organizer-tab-btn ${activeTab === 'sources' ? 'active' : ''}`}
-          >
-            <span>📣</span> Canales / Difusión {sourceAnalysis.totalWithSource > 0 ? `(${sourceAnalysis.totalWithSource})` : ''}
-          </button>
+            <button
+              type="button"
+              id="tab-btn-sources"
+              onClick={() => setActiveTab('sources')}
+              className={`organizer-tab-btn ${activeTab === 'sources' ? 'active' : ''}`}
+            >
+              <span>📣</span> Canales / Difusión {sourceAnalysis.totalWithSource > 0 ? `(${sourceAnalysis.totalWithSource})` : ''}
+            </button>
 
-          <button
-            type="button"
-            id="tab-btn-songs"
-            onClick={() => setActiveTab('songs')}
-            className={`organizer-tab-btn ${activeTab === 'songs' ? 'active' : ''}`}
-          >
-            <span>🎧</span> Temas Pedidos ({songRequests.length})
-          </button>
+            <button
+              type="button"
+              id="tab-btn-songs"
+              onClick={() => setActiveTab('songs')}
+              className={`organizer-tab-btn ${activeTab === 'songs' ? 'active' : ''}`}
+            >
+              <span>🎧</span> Temas Pedidos ({songRequests.length})
+            </button>
 
-          <button
-            type="button"
-            id="tab-btn-ticket"
-            onClick={() => setActiveTab('ticket')}
-            className={`organizer-tab-btn ${activeTab === 'ticket' ? 'active' : ''}`}
-          >
-            <span>🎟️</span> Boleto Digital
-          </button>
+            <button
+              type="button"
+              id="tab-btn-ticket"
+              onClick={() => setActiveTab('ticket')}
+              className={`organizer-tab-btn ${activeTab === 'ticket' ? 'active' : ''}`}
+            >
+              <span>🎟️</span> Boleto Digital
+            </button>
 
-          <button
-            type="button"
-            id="tab-btn-playlist"
-            onClick={() => setActiveTab('playlist')}
-            className={`organizer-tab-btn ${activeTab === 'playlist' ? 'active' : ''}`}
-          >
-            <span>🎵</span> Playlist ({customTracks.length + INITIAL_PLAYLIST.length})
-          </button>
+            <button
+              type="button"
+              id="tab-btn-playlist"
+              onClick={() => setActiveTab('playlist')}
+              className={`organizer-tab-btn ${activeTab === 'playlist' ? 'active' : ''}`}
+            >
+              <span>🎵</span> Playlist ({customTracks.length + INITIAL_PLAYLIST.length})
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1210,7 +1212,7 @@ export default function OrganizadorPage() {
             </div>
 
             {/* Metric KPI Cards Grid (Responsive 2x2 on Mobile, 4x1 on Desktop) */}
-            <div className="organizer-metrics-grid">
+            <div className="organizer-metrics-grid organizer-metrics-hero-grid">
               {/* Total Revenue USD */}
               <div
                 className="organizer-kpi-card"
@@ -1300,17 +1302,8 @@ export default function OrganizadorPage() {
             </div>
 
             {/* RECAUDACIÓN POR MÉTODO DE PAGO */}
-            <div
-              style={{
-                background: 'rgba(15, 12, 28, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '18px',
-                padding: '1.5rem',
-                marginBottom: '1.5rem',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div className="organizer-section-card">
+              <div className="organizer-section-header">
                 <div>
                   <h3 style={{ fontFamily: 'var(--font-title)', fontSize: '1.15rem', fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span>💳</span> RECAUDACIÓN PAGADA POR MÉTODO DE PAGO
@@ -1321,17 +1314,7 @@ export default function OrganizadorPage() {
                 </div>
 
                 {/* Badge Global Cobrado */}
-                <div
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(37, 211, 102, 0.15) 0%, rgba(0, 229, 255, 0.15) 100%)',
-                    border: '1px solid #25d366',
-                    borderRadius: '12px',
-                    padding: '0.5rem 1.15rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                  }}
-                >
+                <div className="organizer-badge-cobrado">
                   <span style={{ fontSize: '0.72rem', color: '#86efac', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Total Cobrado (Pagado)
                   </span>
@@ -1345,13 +1328,7 @@ export default function OrganizadorPage() {
               </div>
 
               {/* Grid de Métodos de Pago */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                  gap: '1rem',
-                }}
-              >
+              <div className="organizer-pm-grid">
                 {metrics?.paymentMethods && metrics.paymentMethods.length > 0 ? (
                   metrics.paymentMethods.map((pm) => {
                     const isPagoMovil = pm.method.toLowerCase().includes('móvil') || pm.method.toLowerCase().includes('movil');
@@ -1502,14 +1479,7 @@ export default function OrganizadorPage() {
             </div>
 
             {/* Top Song Requests */}
-            <div
-              style={{
-                background: 'rgba(15, 12, 28, 0.8)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '16px',
-                padding: '1.5rem',
-              }}
-            >
+            <div className="organizer-section-card">
               <div style={{ marginBottom: '1rem' }}>
                 <h3 style={{ fontFamily: 'var(--font-title)', fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>
                   🎧 TOP TEMAS & ARTISTAS MÁS PEDIDOS (PARA EL DJ)
@@ -1589,19 +1559,7 @@ export default function OrganizadorPage() {
                   type="button"
                   id="btn-export-csv"
                   onClick={handleExportCSV}
-                  style={{
-                    background: 'rgba(0, 240, 255, 0.15)',
-                    border: '1px solid var(--border-neon-cyan)',
-                    color: 'var(--neon-cyan)',
-                    padding: '0.5rem 1rem',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: '0.82rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                  }}
+                  className="organizer-btn-export-csv"
                 >
                   <span>📥</span> Descargar Lista de Puerta (CSV)
                 </button>
@@ -3614,22 +3572,12 @@ export default function OrganizadorPage() {
               )}
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-                gap: '2rem',
-                alignItems: 'start',
-              }}
-            >
+            <div className="organizer-ticket-tab-layout">
               {/* Settings Form */}
               <form
                 onSubmit={handleSaveSettings}
+                className="organizer-section-card"
                 style={{
-                  background: 'rgba(15, 12, 28, 0.88)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '24px',
-                  padding: '1.75rem',
                   boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
                 }}
               >
@@ -3927,15 +3875,7 @@ export default function OrganizadorPage() {
             </div>
 
             {/* Add Song Form */}
-            <div
-              style={{
-                background: 'rgba(15, 12, 28, 0.85)',
-                border: '1px solid var(--border-neon-purple)',
-                borderRadius: '16px',
-                padding: '1.5rem',
-                marginBottom: '2rem',
-              }}
-            >
+            <div className="organizer-section-card" style={{ marginBottom: '2rem' }}>
               <h3 style={{ fontFamily: 'var(--font-title)', fontSize: '1.05rem', fontWeight: 800, color: 'var(--neon-cyan)', marginBottom: '1rem' }}>
                 ➕ Añadir Nueva Canción al Reproductor
               </h3>
