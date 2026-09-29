@@ -16,6 +16,7 @@ export interface ReservationRecord {
   total_ref_bs: number;
   payment_method: string;
   favorite_artist: string;
+  referral_source?: string;
   meme_sticker_used?: string;
   is_paid: boolean;
   created_at?: string;
@@ -152,6 +153,7 @@ export async function processReservation(
         buyerEmail: existing.buyer_email,
         paymentMethod: existing.payment_method,
         favoriteArtist: existing.favorite_artist || '',
+        referralSource: existing.referral_source || '',
         totalUSD: Number(existing.total_usd),
         totalRefBs: Number(existing.total_ref_bs).toLocaleString('es-VE', {
           minimumFractionDigits: 2,
@@ -211,19 +213,33 @@ export async function processReservation(
       total_ref_bs: parsedRefBs,
       payment_method: orderData.paymentMethod,
       favorite_artist: orderData.favoriteArtist,
+      referral_source: orderData.referralSource || 'Otro',
       meme_sticker_used: selectedMeme.id,
       is_paid: false,
     };
 
-    const { data: inserted, error: insertError } = await supabase
+    let insertResult = await supabase
       .from('reservations')
       .insert([newRecord])
       .select()
       .single();
 
-    if (insertError) {
-      throw insertError;
+    // Graceful fallback if database column 'referral_source' does not exist yet
+    if (insertResult.error && insertResult.error.message?.includes('referral_source')) {
+      console.warn('Column referral_source does not exist in DB yet, retrying insert without it...');
+      const { referral_source, ...recordWithoutReferral } = newRecord;
+      insertResult = await supabase
+        .from('reservations')
+        .insert([recordWithoutReferral])
+        .select()
+        .single();
     }
+
+    if (insertResult.error) {
+      throw insertResult.error;
+    }
+
+    const inserted = insertResult.data;
 
     recordClientReservation();
 

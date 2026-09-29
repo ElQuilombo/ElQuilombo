@@ -26,6 +26,7 @@ export default function TicketingSection({ onGenerateTicket }: TicketingSectionP
     email: '',
     paymentMethod: 'Pago Móvil',
     favoriteArtist: '',
+    referralSource: '',
   });
 
   // Track and refresh hourly rate limit
@@ -175,6 +176,11 @@ export default function TicketingSection({ onGenerateTicket }: TicketingSectionP
       return;
     }
 
+    if (!formData.referralSource) {
+      alert('Por favor indicanos cómo te enteraste de nosotros para continuar.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -199,6 +205,7 @@ export default function TicketingSection({ onGenerateTicket }: TicketingSectionP
           buyerEmail: formData.email.trim(),
           paymentMethod: formData.paymentMethod,
           favoriteArtist: formData.favoriteArtist.trim() || 'Milo J / Trueno',
+          referralSource: formData.referralSource || 'Otro',
           totalUSD,
           totalRefBs,
         },
@@ -680,6 +687,29 @@ export default function TicketingSection({ onGenerateTicket }: TicketingSectionP
                 onChange={(e) => setFormData({ ...formData, favoriteArtist: e.target.value })}
               />
               <span className="form-hint">¡Los temas más pedidos sonarán en vivo!</span>
+            </div>
+
+            <div className="form-group form-full">
+              <label htmlFor="buyer-referral" className="form-label">
+                ¿Cómo te enteraste de nosotros? *
+              </label>
+              <select
+                id="buyer-referral"
+                className="form-select"
+                required
+                value={formData.referralSource}
+                onChange={(e) => setFormData({ ...formData, referralSource: e.target.value })}
+              >
+                <option value="" disabled>Seleccioná una opción...</option>
+                <option value="Instagram">📸 Instagram (Reels, Stories o Anuncios)</option>
+                <option value="TikTok">🎵 TikTok (@belleamar_ o Para Ti)</option>
+                <option value="Amigos / Recomendación">🗣️ Amigos / Recomendación (Boca a boca)</option>
+                <option value="WhatsApp">💬 WhatsApp (Estados o Grupos)</option>
+                <option value="Rock & Riff">🎸 Rock & Riff (En el local)</option>
+                <option value="Carteles / Flyers">📄 Carteles / Flyers en la calle</option>
+                <option value="Otro">✨ Otro medio</option>
+              </select>
+              <span className="form-hint">¡Queremos saber cómo llegaste a la fiesta!</span>
             </div>
 
             <div className="form-full">

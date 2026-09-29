@@ -18,6 +18,7 @@ export interface TicketOrder {
   buyerEmail: string;
   paymentMethod: string;
   favoriteArtist: string;
+  referralSource?: string;
   totalUSD: number;
   totalRefBs: string;
   ticketCode: string;

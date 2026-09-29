@@ -17,7 +17,7 @@ export default function OrganizadorPage() {
   const [pinInput, setPinInput] = useState<string>('');
   const [pinError, setPinError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'metrics' | 'attendees' | 'songs' | 'ticket' | 'playlist'>('metrics');
+  const [activeTab, setActiveTab] = useState<'metrics' | 'attendees' | 'sources' | 'songs' | 'ticket' | 'playlist'>('metrics');
 
   // Selected reservation to generate and send QR ticket
   const [selectedTicketOrder, setSelectedTicketOrder] = useState<TicketOrder | null>(null);
@@ -133,6 +133,176 @@ export default function OrganizadorPage() {
     }
   };
 
+  // Acquisition / Referral Sources (Canales de Difusión) state
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [sourceStatusFilter, setSourceStatusFilter] = useState<'all' | 'paid' | 'cash' | 'pending'>('all');
+  const [sourceSearchQuery, setSourceSearchQuery] = useState<string>('');
+  const [copiedSourceReport, setCopiedSourceReport] = useState<boolean>(false);
+
+  const CHANNEL_CONFIG: Record<string, { icon: string; label: string; color: string; bg: string; border: string }> = {
+    'Instagram': {
+      icon: '📸',
+      label: 'Instagram',
+      color: '#f43f5e',
+      bg: 'rgba(244, 63, 94, 0.12)',
+      border: 'rgba(244, 63, 94, 0.35)',
+    },
+    'TikTok': {
+      icon: '🎵',
+      label: 'TikTok',
+      color: '#00f2fe',
+      bg: 'rgba(0, 242, 254, 0.12)',
+      border: 'rgba(0, 242, 254, 0.35)',
+    },
+    'Amigos / Recomendación': {
+      icon: '🗣️',
+      label: 'Amigos / Recomendación',
+      color: '#ffd600',
+      bg: 'rgba(255, 214, 0, 0.12)',
+      border: 'rgba(255, 214, 0, 0.35)',
+    },
+    'WhatsApp': {
+      icon: '💬',
+      label: 'WhatsApp',
+      color: '#25d366',
+      bg: 'rgba(37, 211, 102, 0.12)',
+      border: 'rgba(37, 211, 102, 0.35)',
+    },
+    'Rock & Riff': {
+      icon: '🎸',
+      label: 'Rock & Riff',
+      color: '#c084fc',
+      bg: 'rgba(192, 132, 252, 0.12)',
+      border: 'rgba(192, 132, 252, 0.35)',
+    },
+    'Carteles / Flyers': {
+      icon: '📄',
+      label: 'Carteles / Flyers',
+      color: '#fb923c',
+      bg: 'rgba(251, 146, 60, 0.12)',
+      border: 'rgba(251, 146, 60, 0.35)',
+    },
+    'Otro': {
+      icon: '✨',
+      label: 'Otro medio',
+      color: '#38bdf8',
+      bg: 'rgba(56, 189, 248, 0.12)',
+      border: 'rgba(56, 189, 248, 0.35)',
+    },
+    'No especificado': {
+      icon: '❓',
+      label: 'No especificado (preventas previas)',
+      color: '#94a3b8',
+      bg: 'rgba(148, 163, 184, 0.1)',
+      border: 'rgba(148, 163, 184, 0.25)',
+    },
+  };
+
+  const sourceAnalysis = useMemo(() => {
+    const totalReservations = reservations.length;
+    let totalWithSource = 0;
+    let totalUsdTracked = 0;
+    let totalTicketsTracked = 0;
+
+    const channelMap = new Map<string, {
+      channel: string;
+      count: number;
+      tickets: number;
+      totalUsd: number;
+      paidCount: number;
+      cashCount: number;
+      pendingCount: number;
+    }>();
+
+    reservations.forEach((r) => {
+      const raw = (r.referral_source || '').trim();
+      const channel = raw || 'No especificado';
+      if (raw) totalWithSource += 1;
+
+      const qty = Number(r.quantity) || 1;
+      const usd = Number(r.total_usd) || 0;
+      totalUsdTracked += usd;
+      totalTicketsTracked += qty;
+
+      const status = getReservationStatus(r);
+
+      if (!channelMap.has(channel)) {
+        channelMap.set(channel, {
+          channel,
+          count: 0,
+          tickets: 0,
+          totalUsd: 0,
+          paidCount: 0,
+          cashCount: 0,
+          pendingCount: 0,
+        });
+      }
+
+      const item = channelMap.get(channel)!;
+      item.count += 1;
+      item.tickets += qty;
+      item.totalUsd += usd;
+      if (status === 'paid') item.paidCount += 1;
+      else if (status === 'cash') item.cashCount += 1;
+      else item.pendingCount += 1;
+    });
+
+    const channelsList = Array.from(channelMap.values()).map((c) => {
+      const pct = totalReservations > 0 ? (c.count / totalReservations) * 100 : 0;
+      const conversionPct = c.count > 0 ? ((c.paidCount + c.cashCount) / c.count) * 100 : 0;
+      return {
+        ...c,
+        pct,
+        conversionPct,
+      };
+    });
+
+    // Sort by count descending
+    channelsList.sort((a, b) => b.count - a.count);
+
+    const topChannel = channelsList.length > 0 ? channelsList[0] : null;
+
+    return {
+      totalReservations,
+      totalWithSource,
+      totalUsdTracked,
+      totalTicketsTracked,
+      channelsList,
+      topChannel,
+    };
+  }, [reservations]);
+
+  const filteredSourceAttendees = useMemo(() => {
+    return reservations.filter((r) => {
+      const raw = (r.referral_source || '').trim();
+      const channel = raw || 'No especificado';
+
+      // Channel filter
+      if (sourceFilter !== 'all' && channel !== sourceFilter) {
+        return false;
+      }
+
+      // Status filter
+      const status = getReservationStatus(r);
+      if (sourceStatusFilter !== 'all' && status !== sourceStatusFilter) {
+        return false;
+      }
+
+      // Search query
+      if (sourceSearchQuery.trim()) {
+        const q = sourceSearchQuery.toLowerCase().trim();
+        const matchesName = (r.buyer_name || '').toLowerCase().includes(q);
+        const matchesDni = (r.buyer_dni || '').toLowerCase().includes(q);
+        const matchesPhone = (r.buyer_phone || '').toLowerCase().includes(q);
+        const matchesCode = (r.ticket_code || '').toLowerCase().includes(q);
+        const matchesChannel = channel.toLowerCase().includes(q);
+        return matchesName || matchesDni || matchesPhone || matchesCode || matchesChannel;
+      }
+
+      return true;
+    });
+  }, [reservations, sourceFilter, sourceStatusFilter, sourceSearchQuery]);
+
   const handleCopyDJList = async () => {
     if (songRequests.length === 0) return;
 
@@ -200,6 +370,84 @@ export default function OrganizadorPage() {
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
     link.setAttribute('download', `El_Quilombo_Temas_Pedidos_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCopySourceReport = async () => {
+    if (reservations.length === 0) return;
+
+    let text = `📣 *REPORTE DE CANALES DE DIFUSIÓN - EL QUILOMBO (ROCK & RIFF)* 🇦🇷🔥\n`;
+    text += `📊 Total de reservas registradas: ${reservations.length}\n`;
+    text += `🎯 Reservas con canal respondido: ${sourceAnalysis.totalWithSource}\n\n`;
+
+    if (sourceAnalysis.topChannel) {
+      text += `🏆 *CANAL #1 CON MÁS TRACCIÓN:*\n`;
+      text += `👉 ${sourceAnalysis.topChannel.channel}: ${sourceAnalysis.topChannel.count} reservas (${sourceAnalysis.topChannel.pct.toFixed(1)}%) • ${sourceAnalysis.topChannel.tickets} entradas • $${sourceAnalysis.topChannel.totalUsd} USD\n\n`;
+    }
+
+    text += `📈 *DESGLOSE DE ADQUISICIÓN POR CANAL:*\n`;
+    sourceAnalysis.channelsList.forEach((c, idx) => {
+      const cfg = CHANNEL_CONFIG[c.channel] || { icon: '📌' };
+      text += `${idx + 1}. ${cfg.icon} *${c.channel}*: ${c.count} reservas (${c.pct.toFixed(1)}%) • ${c.tickets} entradas • $${c.totalUsd} USD • Conv: ${c.conversionPct.toFixed(0)}% pagado\n`;
+    });
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedSourceReport(true);
+      setTimeout(() => setCopiedSourceReport(false), 2500);
+    } catch {
+      alert('Error al copiar el reporte al portapapeles.');
+    }
+  };
+
+  const handleExportSourcesCSV = () => {
+    if (reservations.length === 0) {
+      alert('No hay reservas registradas para exportar.');
+      return;
+    }
+
+    const headers = [
+      '#',
+      'Codigo Ticket',
+      'Titular',
+      'Cedula DNI',
+      'WhatsApp',
+      'Canal de Difusion',
+      'Cantidad Entradas',
+      'Total USD',
+      'Metodo de Pago',
+      'Estado Pago',
+      'Fecha Reserva',
+    ];
+
+    const rows = filteredSourceAttendees.map((r, index) => {
+      const status = getReservationStatus(r);
+      const statusLabel = status === 'paid' ? 'PAGADO' : status === 'cash' ? 'EFECTIVO' : 'PENDIENTE';
+      const channel = (r.referral_source || '').trim() || 'No especificado';
+      return [
+        index + 1,
+        `"${r.ticket_code || ''}"`,
+        `"${(r.buyer_name || '').replace(/"/g, '""')}"`,
+        `"${r.buyer_dni || ''}"`,
+        `"${r.buyer_phone || ''}"`,
+        `"${channel.replace(/"/g, '""')}"`,
+        r.quantity || 1,
+        r.total_usd || 0,
+        `"${(r.payment_method || '').replace(/"/g, '""')}"`,
+        statusLabel,
+        `"${r.created_at || ''}"`,
+      ];
+    });
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `El_Quilombo_Canales_Difusion_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -886,6 +1134,15 @@ export default function OrganizadorPage() {
 
           <button
             type="button"
+            id="tab-btn-sources"
+            onClick={() => setActiveTab('sources')}
+            className={`organizer-tab-btn ${activeTab === 'sources' ? 'active' : ''}`}
+          >
+            <span>📣</span> Canales / Difusión {sourceAnalysis.totalWithSource > 0 ? `(${sourceAnalysis.totalWithSource})` : ''}
+          </button>
+
+          <button
+            type="button"
             id="tab-btn-songs"
             onClick={() => setActiveTab('songs')}
             className={`organizer-tab-btn ${activeTab === 'songs' ? 'active' : ''}`}
@@ -1490,6 +1747,28 @@ export default function OrganizadorPage() {
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <div style={{ fontWeight: 700, color: '#fff' }}>{r.buyer_name}</div>
                             <div style={{ color: 'var(--text-subtle)', fontSize: '0.74rem' }}>{r.buyer_dni}</div>
+                            {r.referral_source && (
+                              <div style={{ marginTop: '0.25rem' }}>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    fontSize: '0.68rem',
+                                    padding: '0.12rem 0.45rem',
+                                    borderRadius: '999px',
+                                    background: 'rgba(236, 72, 153, 0.12)',
+                                    color: '#f472b6',
+                                    border: '1px solid rgba(236, 72, 153, 0.28)',
+                                    fontWeight: 700,
+                                  }}
+                                  title={`¿Cómo se enteró?: ${r.referral_source}`}
+                                >
+                                  <span>📣</span>
+                                  <span>{r.referral_source}</span>
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
@@ -1775,6 +2054,19 @@ export default function OrganizadorPage() {
                             📱 {r.buyer_phone}
                           </span>
                         )}
+                        {r.referral_source && (
+                          <span
+                            className="attendee-mobile-meta-item"
+                            style={{
+                              color: '#f472b6',
+                              borderColor: 'rgba(236, 72, 153, 0.3)',
+                              background: 'rgba(236, 72, 153, 0.1)',
+                              fontWeight: 700,
+                            }}
+                          >
+                            📣 {r.referral_source}
+                          </span>
+                        )}
                       </div>
 
                       {/* Details Grid: Quantity, Tier, Amount & Payment Method */}
@@ -1923,6 +2215,743 @@ export default function OrganizadorPage() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB: CANALES DE DIFUSIÓN & ORIGEN DE ASISTENTES           */}
+        {/* ========================================================= */}
+        {activeTab === 'sources' && (
+          <div>
+            {/* Top Bar with Title & Action Buttons */}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-title)', fontSize: '1.35rem', fontWeight: 900, color: '#fff' }}>
+                  📣 CANALES DE DIFUSIÓN &amp; ORIGEN DE ASISTENTES
+                </h2>
+                <p style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
+                  Descubrí por qué canal se enteraron de El Quilombo (Instagram, TikTok, WhatsApp, Amigos, etc.) para enfocar la pauta y medir efectividad.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleCopySourceReport}
+                  style={{
+                    background: copiedSourceReport ? 'rgba(37, 211, 102, 0.25)' : 'rgba(236, 72, 153, 0.15)',
+                    border: `1px solid ${copiedSourceReport ? 'var(--neon-green)' : 'rgba(236, 72, 153, 0.4)'}`,
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '0.5rem 1rem',
+                    color: copiedSourceReport ? 'var(--neon-green)' : '#f472b6',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Copiar reporte analítico para compartir por WhatsApp"
+                >
+                  <span>{copiedSourceReport ? '✓' : '📋'}</span>
+                  <span>{copiedSourceReport ? '¡Reporte Copiado!' : 'Copiar Reporte WhatsApp'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportSourcesCSV}
+                  style={{
+                    background: 'rgba(0, 229, 255, 0.12)',
+                    border: '1px solid var(--border-neon-cyan)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '0.5rem 1rem',
+                    color: 'var(--neon-cyan)',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Descargar listado de asistentes con su canal en formato Excel / CSV"
+                >
+                  <span>📥</span>
+                  <span>Exportar CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics Highlights Cards Grid */}
+            <div className="organizer-metrics-grid" style={{ marginBottom: '1.5rem' }}>
+              {/* Card 1: Top Channel */}
+              <div className="organizer-metric-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span className="organizer-metric-label">Canal #1 Líder</span>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>{sourceAnalysis.topChannel ? (CHANNEL_CONFIG[sourceAnalysis.topChannel.channel]?.icon || '🏆') : '—'}</span>
+                      <span>{sourceAnalysis.topChannel ? sourceAnalysis.topChannel.channel : 'Sin datos'}</span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '1.4rem' }}>🏆</span>
+                </div>
+                <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'var(--neon-cyan)', fontWeight: 800 }}>
+                  {sourceAnalysis.topChannel ? `${sourceAnalysis.topChannel.count} reservas (${sourceAnalysis.topChannel.pct.toFixed(1)}% del total)` : 'Esperando respuestas'}
+                </div>
+              </div>
+
+              {/* Card 2: Total Surveyed */}
+              <div className="organizer-metric-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span className="organizer-metric-label">Respuestas Registradas</span>
+                    <div className="organizer-metric-value" style={{ color: '#25d366' }}>
+                      {sourceAnalysis.totalWithSource}
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', fontWeight: 500, marginLeft: '0.35rem' }}>
+                        / {reservations.length}
+                      </span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '1.4rem' }}>🎯</span>
+                </div>
+                <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-subtle)' }}>
+                  {reservations.length > 0
+                    ? `${((sourceAnalysis.totalWithSource / reservations.length) * 100).toFixed(0)}% de compradores encuestados`
+                    : 'Sin reservas'}
+                </div>
+              </div>
+
+              {/* Card 3: Revenue Tracked */}
+              <div className="organizer-metric-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span className="organizer-metric-label">Ingresos por Canal Líder</span>
+                    <div className="organizer-metric-value" style={{ color: 'var(--neon-cyan)' }}>
+                      ${sourceAnalysis.topChannel ? sourceAnalysis.topChannel.totalUsd : 0} <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>USD</span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '1.4rem' }}>💵</span>
+                </div>
+                <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-subtle)' }}>
+                  {sourceAnalysis.topChannel ? `${sourceAnalysis.topChannel.tickets} entradas de ${sourceAnalysis.topChannel.channel}` : 'Sin datos'}
+                </div>
+              </div>
+
+              {/* Card 4: Conversion Rate */}
+              <div className="organizer-metric-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span className="organizer-metric-label">Conversión Canal Líder</span>
+                    <div className="organizer-metric-value" style={{ color: '#ffd600' }}>
+                      {sourceAnalysis.topChannel ? `${sourceAnalysis.topChannel.conversionPct.toFixed(0)}%` : '—'}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '1.4rem' }}>⚡</span>
+                </div>
+                <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-subtle)' }}>
+                  {sourceAnalysis.topChannel ? `${sourceAnalysis.topChannel.paidCount + sourceAnalysis.topChannel.cashCount} confirmados de ${sourceAnalysis.topChannel.count}` : 'Sin datos'}
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Breakdown of Channels (Bar Chart Style) */}
+            <div
+              style={{
+                background: 'rgba(18, 10, 36, 0.75)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                marginBottom: '1.5rem',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span>📊</span> Distribución de Audiencia por Canal
+                  </h3>
+                  <p style={{ fontSize: '0.76rem', color: 'var(--text-subtle)', marginTop: '0.2rem' }}>
+                    Hacé clic en cualquier canal para filtrar la tabla de asistentes inferior:
+                  </p>
+                </div>
+                {sourceFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSourceFilter('all')}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '0.3rem 0.75rem',
+                      color: '#fff',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕ Quitar filtro ({sourceFilter})
+                  </button>
+                )}
+              </div>
+
+              {sourceAnalysis.channelsList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-subtle)' }}>
+                  <p>Aún no hay reservas con canales de difusión registrados.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  {sourceAnalysis.channelsList.map((c) => {
+                    const cfg = CHANNEL_CONFIG[c.channel] || {
+                      icon: '📌',
+                      label: c.channel,
+                      color: 'var(--neon-cyan)',
+                      bg: 'rgba(0, 229, 255, 0.12)',
+                      border: 'rgba(0, 229, 255, 0.3)',
+                    };
+                    const isSelected = sourceFilter === c.channel;
+
+                    return (
+                      <div
+                        key={c.channel}
+                        onClick={() => setSourceFilter(isSelected ? 'all' : c.channel)}
+                        style={{
+                          background: isSelected ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                          border: isSelected ? '1px solid var(--neon-purple-light)' : '1px solid rgba(255, 255, 255, 0.05)',
+                          borderRadius: '12px',
+                          padding: '0.85rem 1rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {/* Channel Header Line */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1.15rem' }}>{cfg.icon}</span>
+                            <span style={{ fontWeight: 800, color: '#fff', fontSize: '0.92rem' }}>
+                              {cfg.label}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '999px',
+                                background: cfg.bg,
+                                color: cfg.color,
+                                border: `1px solid ${cfg.border}`,
+                              }}
+                            >
+                              {c.pct.toFixed(1)}%
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>
+                            <span style={{ color: '#fff', fontWeight: 800 }}>{c.count} reservas</span>
+                            <span style={{ margin: '0 0.35rem', color: 'var(--text-subtle)' }}>•</span>
+                            <span>{c.tickets} entradas</span>
+                            <span style={{ margin: '0 0.35rem', color: 'var(--text-subtle)' }}>•</span>
+                            <span style={{ color: 'var(--neon-cyan)', fontWeight: 800 }}>${c.totalUsd} USD</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar Track */}
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '8px',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            borderRadius: '999px',
+                            overflow: 'hidden',
+                            marginBottom: '0.45rem',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${Math.max(c.pct, 2)}%`,
+                              height: '100%',
+                              background: cfg.color,
+                              borderRadius: '999px',
+                              transition: 'width 0.5s ease',
+                              boxShadow: `0 0 8px ${cfg.color}`,
+                            }}
+                          />
+                        </div>
+
+                        {/* Status Pills Breakdown */}
+                        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem' }}>
+                          <span style={{ color: '#25d366', fontWeight: 700 }}>
+                            ✓ {c.paidCount} pagadas
+                          </span>
+                          <span style={{ color: 'var(--text-subtle)' }}>•</span>
+                          <span style={{ color: 'var(--neon-cyan)', fontWeight: 700 }}>
+                            💵 {c.cashCount} efectivo
+                          </span>
+                          <span style={{ color: 'var(--text-subtle)' }}>•</span>
+                          <span style={{ color: '#ffd600', fontWeight: 700 }}>
+                            ⏳ {c.pendingCount} pendientes
+                          </span>
+                          <span style={{ marginLeft: 'auto', color: isSelected ? 'var(--neon-purple-light)' : 'var(--text-subtle)', fontWeight: 700 }}>
+                            {isSelected ? '✓ Filtrando asistentes' : 'Tocar para ver compradores ➔'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Filterable Attendees Table by Channel */}
+            <div
+              style={{
+                background: 'rgba(18, 10, 36, 0.75)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span>👥</span> Listado de Asistentes por Canal ({filteredSourceAttendees.length})
+                  </h3>
+                  <p style={{ fontSize: '0.76rem', color: 'var(--text-subtle)', marginTop: '0.2rem' }}>
+                    Filtrá por canal de adquisición o estado de pago para contactar a tus compradores.
+                  </p>
+                </div>
+
+                {/* Search Bar */}
+                <div style={{ position: 'relative', minWidth: '240px' }}>
+                  <input
+                    type="text"
+                    value={sourceSearchQuery}
+                    onChange={(e) => setSourceSearchQuery(e.target.value)}
+                    placeholder="Buscar por nombre, cédula o canal..."
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '0.45rem 1rem 0.45rem 2.2rem',
+                      color: '#fff',
+                      fontSize: '0.8rem',
+                      outline: 'none',
+                    }}
+                  />
+                  <span style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.85rem', color: 'var(--text-subtle)' }}>
+                    🔍
+                  </span>
+                  {sourceSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSourceSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: '0.75rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-subtle)',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Channel Selector Pills */}
+              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSourceFilter('all')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    background: sourceFilter === 'all' ? 'var(--neon-purple)' : 'rgba(255, 255, 255, 0.05)',
+                    color: sourceFilter === 'all' ? '#fff' : 'var(--text-subtle)',
+                    border: sourceFilter === 'all' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  🌐 Todos los Canales ({reservations.length})
+                </button>
+
+                {sourceAnalysis.channelsList.map((c) => {
+                  const cfg = CHANNEL_CONFIG[c.channel] || { icon: '📌' };
+                  const isSelected = sourceFilter === c.channel;
+                  return (
+                    <button
+                      key={c.channel}
+                      type="button"
+                      onClick={() => setSourceFilter(c.channel)}
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: 'var(--radius-pill)',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        background: isSelected ? 'var(--neon-purple)' : 'rgba(255, 255, 255, 0.05)',
+                        color: isSelected ? '#fff' : 'var(--text-subtle)',
+                        border: isSelected ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <span>{cfg.icon}</span>
+                      <span>{c.channel}</span>
+                      <span style={{ opacity: 0.75 }}>({c.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Status Selector Pills */}
+              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSourceStatusFilter('all')}
+                  style={{
+                    padding: '0.28rem 0.7rem',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: sourceStatusFilter === 'all' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    color: sourceStatusFilter === 'all' ? '#fff' : 'var(--text-subtle)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                  }}
+                >
+                  Todos los Estados
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceStatusFilter('paid')}
+                  style={{
+                    padding: '0.28rem 0.7rem',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: sourceStatusFilter === 'paid' ? 'rgba(37, 211, 102, 0.2)' : 'transparent',
+                    color: '#25d366',
+                    border: '1px solid rgba(37, 211, 102, 0.3)',
+                  }}
+                >
+                  ✓ Solo Pagados
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceStatusFilter('cash')}
+                  style={{
+                    padding: '0.28rem 0.7rem',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: sourceStatusFilter === 'cash' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                    color: 'var(--neon-cyan)',
+                    border: '1px solid rgba(0, 229, 255, 0.3)',
+                  }}
+                >
+                  💵 Solo Efectivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceStatusFilter('pending')}
+                  style={{
+                    padding: '0.28rem 0.7rem',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: sourceStatusFilter === 'pending' ? 'rgba(255, 214, 0, 0.2)' : 'transparent',
+                    color: '#ffd600',
+                    border: '1px solid rgba(255, 214, 0, 0.3)',
+                  }}
+                >
+                  ⏳ Solo Pendientes
+                </button>
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="organizer-desktop-table-container organizer-table-wrapper" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-subtle)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '0.75rem 1rem' }}>Ticket</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Titular / DNI</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Canal de Origen</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Entradas</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Total USD</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Estado Pago</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>WhatsApp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSourceAttendees.length > 0 ? (
+                      filteredSourceAttendees.map((r) => {
+                        const status = getReservationStatus(r);
+                        const isPaid = status === 'paid';
+                        const isCash = status === 'cash';
+                        const channel = (r.referral_source || '').trim() || 'No especificado';
+                        const cfg = CHANNEL_CONFIG[channel] || {
+                          icon: '📌',
+                          label: channel,
+                          color: '#fff',
+                          bg: 'rgba(255, 255, 255, 0.08)',
+                          border: 'rgba(255, 255, 255, 0.15)',
+                        };
+
+                        const waMsg = `¡Hola ${r.buyer_name}! Te escribimos del equipo de El Quilombo 🇦🇷🔥 con respecto a tu preventa #${r.ticket_code} ($${r.total_usd} USD). ¡Gracias por enterarte por ${channel}!`;
+                        const waLink = getWhatsappChatUrl(r.buyer_phone, waMsg);
+
+                        return (
+                          <tr
+                            key={`source-row-${r.id}`}
+                            style={{
+                              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                              background: isPaid ? 'rgba(37, 211, 102, 0.03)' : isCash ? 'rgba(0, 229, 255, 0.03)' : 'transparent',
+                            }}
+                          >
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--neon-cyan)', fontSize: '0.86rem' }}>
+                                #{r.ticket_code}
+                              </div>
+                              {r.created_at && (
+                                <div style={{ color: 'var(--text-subtle)', fontSize: '0.7rem', marginTop: '0.2rem' }}>
+                                  🕒 {formatReservationDateTime(r.created_at)}
+                                </div>
+                              )}
+                            </td>
+
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div style={{ fontWeight: 700, color: '#fff' }}>{r.buyer_name}</div>
+                              <div style={{ color: 'var(--text-subtle)', fontSize: '0.74rem' }}>{r.buyer_dni}</div>
+                            </td>
+
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.35rem',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 800,
+                                  padding: '0.25rem 0.65rem',
+                                  borderRadius: '999px',
+                                  background: cfg.bg,
+                                  color: cfg.color,
+                                  border: `1px solid ${cfg.border}`,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                <span>{cfg.icon}</span>
+                                <span>{cfg.label}</span>
+                              </span>
+                            </td>
+
+                            <td style={{ padding: '0.85rem 1rem', fontWeight: 700, color: '#fff' }}>
+                              {r.quantity || 1}x <span style={{ fontSize: '0.74rem', color: 'var(--text-subtle)' }}>({r.tier_name || 'Preventa'})</span>
+                            </td>
+
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div style={{ fontWeight: 800, color: 'var(--neon-cyan)' }}>${r.total_usd} USD</div>
+                              <div style={{ color: 'var(--text-subtle)', fontSize: '0.7rem' }}>Ref: Bs. {r.total_ref_bs}</div>
+                            </td>
+
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  padding: '0.2rem 0.6rem',
+                                  borderRadius: '999px',
+                                  background: isPaid ? '#25d366' : isCash ? 'rgba(0, 229, 255, 0.16)' : 'rgba(255, 214, 0, 0.15)',
+                                  color: isPaid ? '#fff' : isCash ? 'var(--neon-cyan)' : '#ffd600',
+                                  border: isPaid ? 'none' : isCash ? '1px solid var(--neon-cyan)' : '1px solid #ffd600',
+                                }}
+                              >
+                                {isPaid ? '✓ PAGADO' : isCash ? '💵 EFECTIVO' : '⏳ PENDIENTE'}
+                              </span>
+                            </td>
+
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  background: 'rgba(37, 211, 102, 0.15)',
+                                  border: '1px solid #25d366',
+                                  color: '#25d366',
+                                  borderRadius: '6px',
+                                  padding: '0.35rem 0.65rem',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 800,
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.35rem',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title="Enviar mensaje de WhatsApp al comprador"
+                              >
+                                <span>📲</span> WhatsApp
+                              </a>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-subtle)' }}>
+                          <p style={{ fontSize: '1rem', fontWeight: 600 }}>No se encontraron asistentes para el filtro seleccionado.</p>
+                          <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Probá cambiando el canal o el término de búsqueda.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View: Ergonomic Cards for Acquisition Sources */}
+              <div className="organizer-mobile-cards-container">
+                {filteredSourceAttendees.length > 0 ? (
+                  filteredSourceAttendees.map((r) => {
+                    const status = getReservationStatus(r);
+                    const isPaid = status === 'paid';
+                    const isCash = status === 'cash';
+                    const channel = (r.referral_source || '').trim() || 'No especificado';
+                    const cfg = CHANNEL_CONFIG[channel] || {
+                      icon: '📌',
+                      label: channel,
+                      color: '#fff',
+                      bg: 'rgba(255, 255, 255, 0.08)',
+                      border: 'rgba(255, 255, 255, 0.15)',
+                    };
+
+                    const waMsg = `¡Hola ${r.buyer_name}! Te escribimos del equipo de El Quilombo 🇦🇷🔥 con respecto a tu preventa #${r.ticket_code} ($${r.total_usd} USD). ¡Gracias por enterarte por ${channel}!`;
+                    const waLink = getWhatsappChatUrl(r.buyer_phone, waMsg);
+
+                    return (
+                      <div
+                        key={`source-mobile-${r.id}`}
+                        className={`attendee-mobile-card ${status}`}
+                        style={{
+                          background: 'linear-gradient(145deg, rgba(22, 17, 43, 0.95) 0%, rgba(13, 10, 26, 0.98) 100%)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '16px',
+                          padding: '1rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--neon-cyan)', fontSize: '0.85rem' }}>
+                            #{r.ticket_code}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '999px',
+                              background: isPaid ? '#25d366' : isCash ? 'rgba(0, 229, 255, 0.16)' : 'rgba(255, 214, 0, 0.15)',
+                              color: isPaid ? '#fff' : isCash ? 'var(--neon-cyan)' : '#ffd600',
+                            }}
+                          >
+                            {isPaid ? '✓ PAGADO' : isCash ? '💵 EFECTIVO' : '⏳ PENDIENTE'}
+                          </span>
+                        </div>
+
+                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '1rem', marginBottom: '0.25rem' }}>
+                          {r.buyer_name}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+                          {r.buyer_dni && <span>🪪 {r.buyer_dni}</span>}
+                          {r.buyer_phone && <span>📱 {r.buyer_phone}</span>}
+                          {r.created_at && <span>🕒 {formatReservationDateTime(r.created_at)}</span>}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.55rem 0.75rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '10px', marginBottom: '0.75rem' }}>
+                          <div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)' }}>Canal de Origen</div>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                color: cfg.color,
+                                marginTop: '0.15rem',
+                              }}
+                            >
+                              <span>{cfg.icon}</span>
+                              <span>{cfg.label}</span>
+                            </span>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)' }}>{r.quantity || 1}x {r.tier_name || 'Preventa'}</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--neon-cyan)' }}>${r.total_usd} USD</div>
+                          </div>
+                        </div>
+
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            width: '100%',
+                            background: 'rgba(37, 211, 102, 0.15)',
+                            border: '1px solid #25d366',
+                            color: '#25d366',
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <span>📲</span> Escribir por WhatsApp
+                        </a>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-subtle)', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px' }}>
+                    <p style={{ fontWeight: 600 }}>No hay asistentes para este filtro.</p>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         )}

@@ -21,14 +21,19 @@ CREATE TABLE IF NOT EXISTS public.reservations (
     total_ref_bs NUMERIC(12, 2) NOT NULL,
     payment_method VARCHAR(64) NOT NULL,
     favorite_artist VARCHAR(120),
+    referral_source VARCHAR(120),
     meme_sticker_used VARCHAR(64),
     is_paid BOOLEAN DEFAULT false NOT NULL
 );
+
+-- Migración segura para añadir referral_source si la tabla ya existe
+ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS referral_source VARCHAR(120);
 
 -- Índices para búsqueda rápida
 CREATE INDEX IF NOT EXISTS idx_reservations_ticket_code ON public.reservations(ticket_code);
 CREATE INDEX IF NOT EXISTS idx_reservations_buyer_dni ON public.reservations(buyer_dni);
 CREATE INDEX IF NOT EXISTS idx_reservations_is_paid ON public.reservations(is_paid);
+CREATE INDEX IF NOT EXISTS idx_reservations_referral_source ON public.reservations(referral_source);
 
 -- Políticas de Seguridad RLS (Row Level Security)
 ALTER TABLE public.reservations ENABLE ROW LEVEL SECURITY;
