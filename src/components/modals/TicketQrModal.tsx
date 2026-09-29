@@ -6,7 +6,7 @@ import { TicketOrder } from '../../types/ticket';
 import { OFFICIAL_WHATSAPP_NUMBER, ORGANIZERS_NAME, ORGANIZERS_PHONE, ORGANIZERS_PHONE_FORMATTED } from '../../data/ticketing';
 import { MemeSticker, getRandomMemeSticker } from '../../data/memes';
 import { exportStoryVideo, exportStoryGif } from '../../lib/storyVideoExporter';
-import { formatWhatsappPhone, getWhatsappChatUrl } from '../../lib/whatsapp';
+import { formatWhatsappPhone, getWhatsappChatUrl, getAllWhatsappChatUrls, formatPhoneDisplay } from '../../lib/whatsapp';
 import { getPaymentDetail, getPagoMovilBankingClipboard } from '../../data/payments';
 
 interface TicketQrModalProps {
@@ -251,7 +251,8 @@ Ya cuento con los datos de pago (${currentOrder.paymentMethod}). Les adjunto aqu
 📍 *Ubicación (antiguo Oleo Gastrobar):* https://maps.app.goo.gl/u3Q8guMx3PVEw4Vc8`;
 
   const waMessage = isOrganizerView ? waApprovedOrganizerMessage : waClientMessage;
-  const waWebUrl = getWhatsappChatUrl(targetPhone, waMessage);
+  const organizerWaLinks = isOrganizerView ? getAllWhatsappChatUrls(currentOrder.buyerPhone, waMessage) : [];
+  const waWebUrl = organizerWaLinks[0]?.url || getWhatsappChatUrl(targetPhone, waMessage);
 
   const handleWhatsappClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!targetPhone) {
@@ -1500,23 +1501,46 @@ Ya cuento con los datos de pago (${currentOrder.paymentMethod}). Les adjunto aqu
                 </button>
               </div>
 
-              {/* 4. WhatsApp Direct Link */}
-              <a
-                href={waWebUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-whatsapp-confirm"
-                onClick={handleWhatsappClick}
-              >
-                <span>
-                  {isOrganizerView
-                    ? `💬 Enviar Boleto por WhatsApp a ${currentOrder.buyerName}`
-                    : isCashCommitted
-                    ? '💬 Notificar Reserva en Efectivo por WhatsApp'
-                    : '💬 Enviar Comprobante por WhatsApp'}
-                </span>
-                <span>→</span>
-              </a>
+              {/* 4. WhatsApp Direct Link(s) */}
+              {isOrganizerView && organizerWaLinks.length > 1 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                  {organizerWaLinks.map((link, idx) => (
+                    <a
+                      key={`qr-wa-${idx}`}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-whatsapp-confirm"
+                      style={{
+                        padding: '0.75rem 1rem',
+                        fontSize: '0.86rem',
+                      }}
+                    >
+                      <span>
+                        💬 Enviar Boleto a WA #{idx + 1} ({link.display})
+                      </span>
+                      <span>→</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <a
+                  href={waWebUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-whatsapp-confirm"
+                  onClick={handleWhatsappClick}
+                >
+                  <span>
+                    {isOrganizerView
+                      ? `💬 Enviar Boleto por WhatsApp a ${currentOrder.buyerName}`
+                      : isCashCommitted
+                      ? '💬 Notificar Reserva en Efectivo por WhatsApp'
+                      : '💬 Enviar Comprobante por WhatsApp'}
+                  </span>
+                  <span>→</span>
+                </a>
+              )}
             </div>
           )}
         </div>

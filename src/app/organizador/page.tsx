@@ -10,7 +10,7 @@ import { saveEventSettings, getEventSettings } from '../../lib/settings';
 import TicketQrModal from '../../components/modals/TicketQrModal';
 import { TicketOrder } from '../../types/ticket';
 import { MEME_STICKERS } from '../../data/memes';
-import { getWhatsappChatUrl } from '../../lib/whatsapp';
+import { getWhatsappChatUrl, getAllWhatsappChatUrls, formatPhoneDisplay } from '../../lib/whatsapp';
 
 export default function OrganizadorPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -1709,7 +1709,8 @@ export default function OrganizadorPage() {
                       } else {
                         waMsg = `¡Hola ${r.buyer_name}! Te escribimos del equipo de El Quilombo 🇦🇷🔥 con respecto a tu preventa #${r.ticket_code} ($${r.total_usd} USD). ¿Deseas concretar tu pago para validar tu entrada?`;
                       }
-                      const waLink = getWhatsappChatUrl(r.buyer_phone, waMsg);
+                      const waLinks = getAllWhatsappChatUrls(r.buyer_phone, waMsg);
+                      const waLink = waLinks[0]?.url || getWhatsappChatUrl(r.buyer_phone, waMsg);
 
                       const isPaid = status === 'paid';
                       const isCash = status === 'cash';
@@ -1747,6 +1748,11 @@ export default function OrganizadorPage() {
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <div style={{ fontWeight: 700, color: '#fff' }}>{r.buyer_name}</div>
                             <div style={{ color: 'var(--text-subtle)', fontSize: '0.74rem' }}>{r.buyer_dni}</div>
+                            {r.buyer_phone && (
+                              <div style={{ color: 'rgba(255, 255, 255, 0.55)', fontSize: '0.72rem', marginTop: '0.15rem' }}>
+                                📱 {formatPhoneDisplay(r.buyer_phone)}
+                              </div>
+                            )}
                             {r.referral_source && (
                               <div style={{ marginTop: '0.25rem' }}>
                                 <span
@@ -1917,27 +1923,56 @@ export default function OrganizadorPage() {
                               >
                                 <span>🎟️</span> Generar Boleto QR &amp; Enviar
                               </button>
-                              <a
-                                href={waLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                  background: 'rgba(37, 211, 102, 0.15)',
-                                  border: '1px solid #25d366',
-                                  color: '#25d366',
-                                  borderRadius: '6px',
-                                  padding: '0.35rem 0.65rem',
-                                  fontSize: '0.74rem',
-                                  textDecoration: 'none',
-                                  fontWeight: 700,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.3rem',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                💬 WhatsApp
-                              </a>
+                              {waLinks.length > 1 ? (
+                                waLinks.map((item, idx) => (
+                                  <a
+                                    key={`wa-desktop-${r.id}-${idx}`}
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title={`Abrir WhatsApp con el número ${item.display}`}
+                                    style={{
+                                      background: 'rgba(37, 211, 102, 0.18)',
+                                      border: '1px solid #25d366',
+                                      color: '#25d366',
+                                      borderRadius: '6px',
+                                      padding: '0.35rem 0.6rem',
+                                      fontSize: '0.73rem',
+                                      textDecoration: 'none',
+                                      fontWeight: 800,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.28rem',
+                                      whiteSpace: 'nowrap',
+                                      boxShadow: '0 0 8px rgba(37, 211, 102, 0.2)',
+                                    }}
+                                  >
+                                    💬 WA #{idx + 1} ({item.display})
+                                  </a>
+                                ))
+                              ) : (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{
+                                    background: 'rgba(37, 211, 102, 0.15)',
+                                    border: '1px solid #25d366',
+                                    color: '#25d366',
+                                    borderRadius: '6px',
+                                    padding: '0.35rem 0.65rem',
+                                    fontSize: '0.74rem',
+                                    textDecoration: 'none',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  💬 WhatsApp
+                                </a>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleDeleteReservation(r)}
@@ -1992,7 +2027,8 @@ export default function OrganizadorPage() {
                   } else {
                     waMsg = `¡Hola ${r.buyer_name}! Te escribimos del equipo de El Quilombo 🇦🇷🔥 con respecto a tu preventa #${r.ticket_code} ($${r.total_usd} USD). ¿Deseas concretar tu pago para validar tu entrada?`;
                   }
-                  const waLink = getWhatsappChatUrl(r.buyer_phone, waMsg);
+                  const waLinks = getAllWhatsappChatUrls(r.buyer_phone, waMsg);
+                  const waLink = waLinks[0]?.url || getWhatsappChatUrl(r.buyer_phone, waMsg);
 
                   return (
                     <div
@@ -2051,7 +2087,7 @@ export default function OrganizadorPage() {
                         )}
                         {r.buyer_phone && (
                           <span className="attendee-mobile-meta-item">
-                            📱 {r.buyer_phone}
+                            📱 {formatPhoneDisplay(r.buyer_phone)}
                           </span>
                         )}
                         {r.referral_source && (
@@ -2170,16 +2206,41 @@ export default function OrganizadorPage() {
                           <span>Generar Boleto QR</span>
                         </button>
 
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="attendee-mobile-btn-wa"
-                          title="Abrir chat directo de WhatsApp con el cliente"
-                        >
-                          <span>💬</span>
-                          <span>WhatsApp</span>
-                        </a>
+                        {waLinks.length > 1 ? (
+                          waLinks.map((item, idx) => (
+                            <a
+                              key={`wa-mobile-${r.id}-${idx}`}
+                              href={item.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="attendee-mobile-btn-wa"
+                              title={`Contactar a ${item.display} por WhatsApp`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.3rem',
+                                fontSize: '0.74rem',
+                                padding: '0.45rem 0.6rem',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span>💬</span>
+                              <span>WA #{idx + 1}: {item.display}</span>
+                            </a>
+                          ))
+                        ) : (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="attendee-mobile-btn-wa"
+                            title="Abrir chat directo de WhatsApp con el cliente"
+                          >
+                            <span>💬</span>
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
 
                         <button
                           type="button"
@@ -2725,7 +2786,8 @@ export default function OrganizadorPage() {
                         };
 
                         const waMsg = `¡Hola ${r.buyer_name}! Te escribimos del equipo de El Quilombo 🇦🇷🔥 con respecto a tu preventa #${r.ticket_code} ($${r.total_usd} USD). ¡Gracias por enterarte por ${channel}!`;
-                        const waLink = getWhatsappChatUrl(r.buyer_phone, waMsg);
+                        const waLinks = getAllWhatsappChatUrls(r.buyer_phone, waMsg);
+                        const waLink = waLinks[0]?.url || getWhatsappChatUrl(r.buyer_phone, waMsg);
 
                         return (
                           <tr
@@ -2749,6 +2811,11 @@ export default function OrganizadorPage() {
                             <td style={{ padding: '0.85rem 1rem' }}>
                               <div style={{ fontWeight: 700, color: '#fff' }}>{r.buyer_name}</div>
                               <div style={{ color: 'var(--text-subtle)', fontSize: '0.74rem' }}>{r.buyer_dni}</div>
+                              {r.buyer_phone && (
+                                <div style={{ color: 'rgba(255, 255, 255, 0.55)', fontSize: '0.72rem', marginTop: '0.15rem' }}>
+                                  📱 {formatPhoneDisplay(r.buyer_phone)}
+                                </div>
+                              )}
                             </td>
 
                             <td style={{ padding: '0.85rem 1rem' }}>
@@ -2799,28 +2866,59 @@ export default function OrganizadorPage() {
                             </td>
 
                             <td style={{ padding: '0.85rem 1rem' }}>
-                              <a
-                                href={waLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                  background: 'rgba(37, 211, 102, 0.15)',
-                                  border: '1px solid #25d366',
-                                  color: '#25d366',
-                                  borderRadius: '6px',
-                                  padding: '0.35rem 0.65rem',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 800,
-                                  textDecoration: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.35rem',
-                                  whiteSpace: 'nowrap',
-                                }}
-                                title="Enviar mensaje de WhatsApp al comprador"
-                              >
-                                <span>📲</span> WhatsApp
-                              </a>
+                              {waLinks.length > 1 ? (
+                                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                  {waLinks.map((item, idx) => (
+                                    <a
+                                      key={`src-wa-${r.id}-${idx}`}
+                                      href={item.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{
+                                        background: 'rgba(37, 211, 102, 0.18)',
+                                        border: '1px solid #25d366',
+                                        color: '#25d366',
+                                        borderRadius: '6px',
+                                        padding: '0.35rem 0.6rem',
+                                        fontSize: '0.73rem',
+                                        fontWeight: 800,
+                                        textDecoration: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.28rem',
+                                        whiteSpace: 'nowrap',
+                                        boxShadow: '0 0 8px rgba(37, 211, 102, 0.2)',
+                                      }}
+                                      title={`Enviar WhatsApp a ${item.display}`}
+                                    >
+                                      <span>💬</span> WA #{idx + 1} ({item.display})
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{
+                                    background: 'rgba(37, 211, 102, 0.15)',
+                                    border: '1px solid #25d366',
+                                    color: '#25d366',
+                                    borderRadius: '6px',
+                                    padding: '0.35rem 0.65rem',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 800,
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title="Enviar mensaje de WhatsApp al comprador"
+                                >
+                                  <span>📲</span> WhatsApp
+                                </a>
+                              )}
                             </td>
                           </tr>
                         );
@@ -2854,7 +2952,8 @@ export default function OrganizadorPage() {
                     };
 
                     const waMsg = `¡Hola ${r.buyer_name}! Te escribimos del equipo de El Quilombo 🇦🇷🔥 con respecto a tu preventa #${r.ticket_code} ($${r.total_usd} USD). ¡Gracias por enterarte por ${channel}!`;
-                    const waLink = getWhatsappChatUrl(r.buyer_phone, waMsg);
+                    const waLinks = getAllWhatsappChatUrls(r.buyer_phone, waMsg);
+                    const waLink = waLinks[0]?.url || getWhatsappChatUrl(r.buyer_phone, waMsg);
 
                     return (
                       <div
@@ -2891,7 +2990,7 @@ export default function OrganizadorPage() {
 
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
                           {r.buyer_dni && <span>🪪 {r.buyer_dni}</span>}
-                          {r.buyer_phone && <span>📱 {r.buyer_phone}</span>}
+                          {r.buyer_phone && <span>📱 {formatPhoneDisplay(r.buyer_phone)}</span>}
                           {r.created_at && <span>🕒 {formatReservationDateTime(r.created_at)}</span>}
                         </div>
 
@@ -2920,28 +3019,59 @@ export default function OrganizadorPage() {
                           </div>
                         </div>
 
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.4rem',
-                            width: '100%',
-                            background: 'rgba(37, 211, 102, 0.15)',
-                            border: '1px solid #25d366',
-                            color: '#25d366',
-                            borderRadius: '8px',
-                            padding: '0.5rem',
-                            fontSize: '0.8rem',
-                            fontWeight: 800,
-                            textDecoration: 'none',
-                          }}
-                        >
-                          <span>📲</span> Escribir por WhatsApp
-                        </a>
+                        {waLinks.length > 1 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', width: '100%' }}>
+                            {waLinks.map((item, idx) => (
+                              <a
+                                key={`src-wa-mob-${r.id}-${idx}`}
+                                href={item.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '0.4rem',
+                                  width: '100%',
+                                  padding: '0.55rem',
+                                  borderRadius: '8px',
+                                  background: 'rgba(37, 211, 102, 0.18)',
+                                  border: '1px solid #25d366',
+                                  color: '#25d366',
+                                  fontWeight: 800,
+                                  fontSize: '0.8rem',
+                                  textDecoration: 'none',
+                                  boxShadow: '0 0 10px rgba(37, 211, 102, 0.2)',
+                                }}
+                              >
+                                <span>📲</span> Contactar WA #{idx + 1}: {item.display}
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.4rem',
+                              width: '100%',
+                              background: 'rgba(37, 211, 102, 0.15)',
+                              border: '1px solid #25d366',
+                              color: '#25d366',
+                              borderRadius: '8px',
+                              padding: '0.5rem',
+                              fontSize: '0.8rem',
+                              fontWeight: 800,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <span>📲</span> Escribir por WhatsApp
+                          </a>
+                        )}
                       </div>
                     );
                   })
